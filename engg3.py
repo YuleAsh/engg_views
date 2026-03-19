@@ -38,9 +38,6 @@ for prop in properties:
     for ts in hours:
         hr = ts.hour
 
-        # -----------------------------
-        # WiFi / Streaming / Fault dummy base
-        # -----------------------------
         wifi_busy_24 = np.clip(np.random.normal(0.55, 0.12), 0.08, 0.98)
         wifi_busy_5 = np.clip(np.random.normal(0.42, 0.10), 0.05, 0.95)
         wifi_noise_24 = np.clip(np.random.normal(-83, 4), -98, -65)
@@ -79,11 +76,6 @@ for prop in properties:
         avg_next_hop_rssi = np.clip(np.random.normal(-63, 6), -85, -45)
         min_next_hop_rssi = np.clip(avg_next_hop_rssi - np.random.uniform(4, 12), -95, -50)
 
-        # -----------------------------
-        # GPON / Fiber Access metrics
-        # RX = ONT-side optical impairment proxy
-        # TX = port/access-side transmission context
-        # -----------------------------
         total_onts = len(prop_onts)
 
         avg_rx_optical_level = np.clip(np.random.normal(-25.5, 1.8), -33.0, -21.0)
@@ -127,9 +119,6 @@ for prop in properties:
 
         gpon_issue_flag = int((critical_onts >= 2) or (pon_ports_down >= 1) or (ont_signal_loss_events >= 2))
 
-        # -----------------------------
-        # Root-cause-specific shaping
-        # -----------------------------
         if cause == "RF Congestion":
             wifi_busy_24 = np.clip(np.random.normal(0.89, 0.04), 0.78, 0.99)
             wifi_busy_5 = np.clip(np.random.normal(0.47, 0.05), 0.30, 0.70)
@@ -171,9 +160,6 @@ for prop in properties:
             l102_errors = int(np.clip(np.random.normal(6, 2), 0, 18))
             stall_ratio = np.clip(np.random.normal(0.024, 0.010), 0.005, 0.09)
 
-        # -----------------------------
-        # Derived metrics
-        # -----------------------------
         leaf_to_gateway_ratio = leaf_nodes / gateway_nodes if gateway_nodes > 0 else np.nan
         observed_channels_24 = 3
         observed_channels_5 = int(np.random.choice([4, 5, 6, 8]))
@@ -322,7 +308,6 @@ for prop in properties:
                 "severity_score": severity_score,
                 "total_congested_channels": total_congested_channels,
                 "total_congested_eeros": total_congested_eeros,
-                # GPON
                 "total_onts": total_onts,
                 "avg_rx_optical_level": round(float(avg_rx_optical_level), 2),
                 "avg_tx_optical_level": round(float(avg_tx_optical_level), 2),
@@ -334,57 +319,6 @@ for prop in properties:
             }
         )
 
-        # -----------------------------
-        # RF detail rows
-        # -----------------------------
-        two_four_channels = [1, 6, 11]
-        five_channels = [36, 40, 44, 48]
-
-        for i, _ch in enumerate(two_four_channels):
-            eero_id = f"{prop}_EERO_{i+1}"
-            ch_busy = np.clip(wifi_busy_24 + np.random.normal(0, 0.05), 0.05, 0.99)
-            ch_noise = np.clip(wifi_noise_24 + np.random.normal(0, 1.5), -100, -60)
-            ch_interference = np.clip(interference_24 + np.random.normal(0, 0.04), 0.0, 0.99)
-            ch_self = np.clip(self_traffic_24 + np.random.normal(0, 0.04), 0.0, 0.99)
-            rf_detail_rows.append(
-                {
-                    "mduid": prop,
-                    "timestamp": ts,
-                    "dt": ts.date(),
-                    "hr": hr,
-                    "eero_id": eero_id,
-                    "band": "2.4GHz",
-                    "wifi_busy_ratio": round(float(ch_busy), 3),
-                    "wifi_noise": round(float(ch_noise), 2),
-                    "interference_ratio": round(float(ch_interference), 3),
-                    "self_traffic_ratio": round(float(ch_self), 3),
-                }
-            )
-
-        for i, _ch in enumerate(five_channels):
-            eero_id = f"{prop}_EERO_{i+1}"
-            ch_busy = np.clip(wifi_busy_5 + np.random.normal(0, 0.05), 0.05, 0.99)
-            ch_noise = np.clip(wifi_noise_5 + np.random.normal(0, 1.5), -105, -65)
-            ch_interference = np.clip(interference_5 + np.random.normal(0, 0.04), 0.0, 0.99)
-            ch_self = np.clip(self_traffic_5 + np.random.normal(0, 0.04), 0.0, 0.99)
-            rf_detail_rows.append(
-                {
-                    "mduid": prop,
-                    "timestamp": ts,
-                    "dt": ts.date(),
-                    "hr": hr,
-                    "eero_id": eero_id,
-                    "band": "5GHz",
-                    "wifi_busy_ratio": round(float(ch_busy), 3),
-                    "wifi_noise": round(float(ch_noise), 2),
-                    "interference_ratio": round(float(ch_interference), 3),
-                    "self_traffic_ratio": round(float(ch_self), 3),
-                }
-            )
-
-        # -----------------------------
-        # GPON detail rows
-        # -----------------------------
         down_port_pool = []
         if pon_ports_down > 0:
             down_port_pool = list(np.random.choice([1, 2, 3, 4, 5, 6, 7, 8], size=pon_ports_down, replace=False))
@@ -424,6 +358,19 @@ for prop in properties:
                 tx_value = round(float(np.random.uniform(30.0, 35.0)), 1)
                 port_status = "down" if pon_id in down_port_pool else "up"
 
+            rf_detail_rows.append({
+                "mduid": prop,
+                "timestamp": ts,
+                "dt": ts.date(),
+                "hr": hr,
+                "eero_id": f"{prop}_EERO_{(idx % 4)+1}",
+                "band": "2.4GHz" if idx % 2 == 0 else "5GHz",
+                "wifi_busy_ratio": round(float(np.random.uniform(0.1, 0.95)), 3),
+                "wifi_noise": round(float(np.random.uniform(-100, -65)), 2),
+                "interference_ratio": round(float(np.random.uniform(0.0, 0.9)), 3),
+                "self_traffic_ratio": round(float(np.random.uniform(0.0, 0.9)), 3),
+            })
+
             gpon_detail_rows.append(
                 {
                     "mduid": prop,
@@ -444,9 +391,6 @@ df = pd.DataFrame(rows)
 df_rf_detail = pd.DataFrame(rf_detail_rows)
 df_gpon_detail = pd.DataFrame(gpon_detail_rows)
 
-# =========================================================
-# ADD ROLLING ENGINEER METRICS
-# =========================================================
 def add_recent_metrics(group: pd.DataFrame) -> pd.DataFrame:
     group = group.sort_values("timestamp").copy()
     group["degraded_last_8"] = group["degraded_flag"].rolling(8, min_periods=1).sum()
@@ -510,28 +454,29 @@ def add_recent_metrics(group: pd.DataFrame) -> pd.DataFrame:
         default="No major RF stress; degradation may be driven by non-RF layers.",
     )
 
+    group["imbalance_issue_flag"] = (
+        ((group["critical_onts"] <= 1) & (group["low_signal_onts"] >= 2) & (group["pon_ports_down"] == 0))
+    ).astype(int)
+
     group["gpon_summary_text"] = np.select(
         [
-            (group["pon_ports_down"] >= 1) & (group["critical_onts"] >= 2),
             group["pon_ports_down"] >= 1,
             group["critical_onts"] >= 3,
             group["ont_signal_loss_events"] >= 2,
+            group["imbalance_issue_flag"] == 1,
         ],
         [
-            "Fiber access stress is visible: port outage plus multiple critical ONTs.",
-            "One or more PON ports are down; access-layer instability is likely driving impact.",
-            "Multiple ONTs show critical optical receive levels; inspect fiber path / ONT optics.",
-            "Repeated ONT signal loss events suggest intermittent optical instability.",
+            "PON port outage detected — access layer disruption likely.",
+            "Multiple ONTs have critical optical levels — fiber degradation suspected.",
+            "Repeated ONT signal loss events indicate intermittent instability.",
+            "PON imbalance detected — uneven load across access ports.",
         ],
-        default="Fiber access layer appears broadly stable for the selected hour.",
+        default="Fiber access layer stable — no strong GPON-driven issue.",
     )
     return group
 
 df = df.groupby("mduid", group_keys=False).apply(add_recent_metrics).reset_index(drop=True)
 
-# =========================================================
-# HELPER: TOP 3 ERRORS
-# =========================================================
 def get_top_3_errors(row):
     error_pairs = []
     error_map = {
@@ -553,9 +498,6 @@ def get_top_3_errors(row):
 
     return pd.Series([top1, top2, top3], index=["top_error_1", "top_error_2", "top_error_3"])
 
-# =========================================================
-# ACTION QUEUE
-# =========================================================
 latest_ts = df["timestamp"].max()
 queue = df[df["timestamp"] == latest_ts].copy()
 
@@ -582,13 +524,9 @@ queue["persistence_display"] = (
 )
 
 queue[["top_error_1", "top_error_2", "top_error_3"]] = queue.apply(get_top_3_errors, axis=1)
-
 queue = queue.sort_values(["priority_score", "severity_score"], ascending=False).reset_index(drop=True)
 queue["priority_rank"] = np.arange(1, len(queue) + 1)
 
-# =========================================================
-# UI
-# =========================================================
 st.title("Hotwire Engineer Workbench")
 st.caption("Engineer-first single-page dashboard focused on technical action and evidence.")
 
@@ -607,9 +545,6 @@ rf_metric_mode = st.sidebar.radio(
 selected_df = df[df["mduid"] == selected_property].sort_values("timestamp").copy()
 current = selected_df.iloc[-1]
 
-# =========================================================
-# TOP ACTION QUEUE
-# =========================================================
 st.subheader("Assigned Technical Action Queue")
 
 queue_display = queue[
@@ -643,9 +578,6 @@ queue_display = queue[
 )
 st.dataframe(queue_display, use_container_width=True, hide_index=True)
 
-# =========================================================
-# MAIN BODY
-# =========================================================
 left, right = st.columns([2.0, 1.1])
 
 with left:
@@ -753,16 +685,26 @@ with left:
         )
 
     with tab2:
-        st.markdown("#### Critical ONTs Trend")
+        st.markdown("#### Critical + Low Signal + Signal Loss Trend")
 
-        gpon_chart_df = selected_df[["timestamp", "critical_onts"]].copy()
+        gpon_chart_df = selected_df[
+            ["timestamp", "critical_onts", "low_signal_onts", "ont_signal_loss_events"]
+        ].copy()
+
+        gpon_chart_long = gpon_chart_df.melt(
+            id_vars=["timestamp"],
+            var_name="Metric",
+            value_name="Value",
+        )
+
         gpon_chart = (
-            alt.Chart(gpon_chart_df)
+            alt.Chart(gpon_chart_long)
             .mark_line(point=True)
             .encode(
                 x=alt.X("timestamp:T", title="Hour"),
-                y=alt.Y("critical_onts:Q", title="Critical ONTs"),
-                tooltip=["timestamp:T", "critical_onts:Q"],
+                y=alt.Y("Value:Q", title="Count"),
+                color=alt.Color("Metric:N", title="Metric"),
+                tooltip=["timestamp:T", "Metric:N", "Value:Q"],
             )
             .properties(height=300)
         )
@@ -771,7 +713,24 @@ with left:
         threshold_line = alt.Chart(threshold_df).mark_rule(strokeDash=[6, 4]).encode(y="y:Q")
         st.altair_chart(gpon_chart + threshold_line, use_container_width=True)
 
-        st.caption(current["gpon_summary_text"])
+        imbalance_flag_ui = (
+            int(current["imbalance_issue_flag"])
+            if ("imbalance_issue_flag" in current.index and pd.notna(current["imbalance_issue_flag"]))
+            else 0
+        )
+
+        gpon_summary_text_ui = (
+            "PON port outage detected — access layer disruption likely."
+            if int(current["pon_ports_down"]) >= 1 else
+            "Multiple ONTs have critical optical levels — fiber degradation suspected."
+            if int(current["critical_onts"]) >= 3 else
+            "Repeated ONT signal loss events indicate intermittent instability."
+            if int(current["ont_signal_loss_events"]) >= 2 else
+            "PON imbalance detected — uneven load across access ports."
+            if imbalance_flag_ui == 1 else
+            "Fiber access layer stable — no strong GPON-driven issue."
+        )
+        st.caption(gpon_summary_text_ui)
 
         st.markdown("#### GPON / Optical Evidence Table")
 
@@ -783,8 +742,19 @@ with left:
             .copy()
         )
 
+        def classify_issue(row):
+            if row["signal_health"] == "Signal Lost" or row["port_status"] == "down":
+                return "Access Outage"
+            elif row["signal_health"] == "Critical":
+                return "Critical Optical"
+            elif row["signal_health"] == "Weak":
+                return "Low Signal"
+            return "Healthy"
+
+        latest_gpon_detail["issue_class"] = latest_gpon_detail.apply(classify_issue, axis=1)
+
         health_order = {"Signal Lost": 0, "Critical": 1, "Weak": 2, "Healthy": 3}
-        latest_gpon_detail["health_order"] = latest_gpon_detail["signal_health"].map(health_order)
+        latest_gpon_detail["health_order"] = latest_gpon_detail["signal_health"].map(health_order).fillna(99)
 
         latest_gpon_detail["rx_optical_display"] = latest_gpon_detail["rx_optical_level"].apply(
             lambda x: "65534 / Lost" if x == 65534 else x
@@ -793,9 +763,16 @@ with left:
             lambda x: "65534 / Lost" if x == 65534 else x
         )
 
+        impacted_gpon_detail = latest_gpon_detail[
+            latest_gpon_detail["signal_health"] != "Healthy"
+        ].copy()
+
+        if not impacted_gpon_detail.empty:
+            latest_gpon_detail = impacted_gpon_detail
+
         latest_gpon_detail = latest_gpon_detail.sort_values(
-            ["health_order", "port_status", "rx_optical_level"],
-            ascending=[True, True, True],
+            ["health_order", "rx_optical_level"],
+            ascending=[True, True],
         )
 
         st.dataframe(
@@ -808,8 +785,9 @@ with left:
                     "tx_optical_display": "TX Optical",
                     "port_status": "Port Status",
                     "signal_health": "Signal Health",
+                    "issue_class": "Issue Class",
                 }
-            )[["ONT Serial", "PON", "ONT", "RX Optical", "TX Optical", "Port Status", "Signal Health"]],
+            )[["ONT Serial", "PON", "ONT", "RX Optical", "TX Optical", "Port Status", "Signal Health", "Issue Class"]],
             use_container_width=True,
             hide_index=True,
         )
@@ -892,11 +870,14 @@ with right:
 
     tile_row_1 = st.columns(2)
     tile_row_2 = st.columns(2)
+    tile_row_3 = st.columns(2)
 
     tile_row_1[0].metric("PON Ports Down", int(current["pon_ports_down"]))
-    tile_row_1[1].metric("Critical ONTs", int(current["critical_onts"]))
-    tile_row_2[0].metric("Avg RX Optical", f'{float(current["avg_rx_optical_level"]):.2f}')
-    tile_row_2[1].metric("Avg TX Optical", f'{float(current["avg_tx_optical_level"]):.2f}')
+    tile_row_1[1].metric("Critical ONTs", f'{int(current["critical_onts"])} / {int(current["total_onts"])}')
+    tile_row_2[0].metric("Low Signal ONTs", f'{int(current["low_signal_onts"])} / {int(current["total_onts"])}')
+    tile_row_2[1].metric("Signal Loss Events", int(current["ont_signal_loss_events"]))
+    tile_row_3[0].metric("Avg RX Optical", f'{float(current["avg_rx_optical_level"]):.2f}')
+    tile_row_3[1].metric("GPON Issue", "Yes" if int(current["gpon_issue_flag"]) == 1 else "No")
 
     st.markdown("### Topology Health")
 
